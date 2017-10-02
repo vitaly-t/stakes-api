@@ -11,74 +11,102 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX ON users(email);
 
 CREATE TABLE brokers (
-    id uuid primary key default uuid_generate_v1(),
+    id serial primary key,
     short_name varchar,
     long_name varchar
 );
 
+CREATE TABLE accounts (
+    id varchar,
+    user_id uuid,
+    broker int references brokers,
+    name varchar,
+
+    total_value money,
+    stock_bp money,
+    option_bp money,
+
+    should_autoupdate boolean default false,
+    last_pull_time timestamptz,
+
+    PRIMARY KEY (id, user_id)
+);
+
+CREATE UNIQUE INDEX ON accounts(user_id, id);
+CREATE INDEX ON accounts(user_id);
+
 CREATE TABLE positions (
     id uuid primary key default uuid_generate_v1(),
     user_id uuid references users,
+    account varchar,
     symbol varchar,
     name varchar,
     note varchar,
-
-    broker uuid references brokers,
+    tags int[],
     active boolean default true,
+    added timestamptz default now(),
+    latest_trade timestamptz default now(),
 
-    added timestamptz default now()
+    FOREIGN KEY (account, user_id) REFERENCES accounts
 );
 
 CREATE INDEX ON positions(user_id, added, active);
-CREATE INDEX ON positions(user_id, broker, active);
+CREATE INDEX ON positions(user_id, account, active);
 CREATE INDEX ON positions(user_id, symbol, active);
-
-CREATE TABLE combos (
-    id uuid primary key default uuid_generate_v1(),
-    user_id uuid references users, -- not used yet
-    position uuid references positions,
-    name varchar not null
-);
-
-CREATE INDEX ON combos(user_id, position);
+CREATE INDEX ON positions using gin(tags);
 
 CREATE TABLE trades (
     id uuid primary key default uuid_generate_v1(),
-    user_id uuid references users, -- not used yet
+    user_id uuid references users,
     position uuid references positions,
-    combo uuid references combos,
+
+    broker_id varchar,
 
     name varchar,
     note varchar,
+    symbol varchar,
     size int,
     price money,
     multiplier int,
     commissions money,
     notional_risk money,
 
-    traded timestamptz not null,
+    combined_into uuid,
+
+    traded timestamptz default now(),
 
     added timestamptz default now()
 );
 
-CREATE INDEX ON trades(user_id, position);
+CREATE INDEX ON trades(user_id, symbol);
+CREATE INDEX ON trades(position);
+
+CREATE TABLE optionlegs (
+    id uuid primary key default uuid_generate_v1(),
+    user_id uuid,
+    symbol varchar not null,
+    price money,
+    size int not null,
+    call boolean not null,
+    expiration date not null,
+    strike money not null,
+    opening_trade uuid references trades,
+    closing_trade uuid references trades
+);
+
+CREATE INDEX ON optionlegs(user_id, symbol);
+CREATE INDEX ON optionlegs(user_id, symbol, expiration, strike, call);
+CREATE INDEX ON optionlegs(opening_trade);
+CREATE INDEX ON optionlegs(closing_trade);
 
 CREATE TABLE tags (
     id serial primary key,
-    user_id uuid references users, -- Not used yet
+    user_id uuid references users,
     name varchar not null,
     color varchar not null
 );
 
 CREATE UNIQUE INDEX ON tags(user_id, name);
-
-CREATE TABLE position_tags (
-    position uuid not null references positions on delete cascade,
-    tag int not null references tags on delete cascade
-);
-
-CREATE INDEX ON position_tags(position);
-CREATE INDEX ON position_tags(tag);
 
 INSERT INTO brokers (short_name, long_name) VALUES
     ('IB', 'Interactive Brokers'),
