@@ -72,7 +72,7 @@ export const accessors = {
 
     if(options.tags) {
       args.tags = options.tags;
-      wheres.push('tags @> $[tags]');
+      wheres.push('tags && $[tags]');
     }
 
     if(_.has(options, 'active')) {
@@ -154,7 +154,7 @@ export const accessors = {
     }
 
     let query = `UPDATE positions SET tags = tags || $[tag]
-        WHERE id=$[id] AND user_id=$[user_id]) AND NOT (tags @> $[tag])
+        WHERE id=$[id] AND user_id=$[user_id]) AND NOT (tags && $[tag])
         RETURNING id`;
     return db.query(req.log, 'add tag', query, { id, tag, user_id: req.user.id });
   },
