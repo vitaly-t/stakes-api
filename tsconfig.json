@@ -4,7 +4,10 @@
         "target": "es2017",
         "sourceMap": true,
         "module": "commonjs",
-        "alwaysStrict": true
+        "alwaysStrict": true,
+
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true
     },
     "include": [
         "src/**/*"

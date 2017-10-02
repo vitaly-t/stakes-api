@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import * as fastifyMod from 'fastify';
 import * as config from './config';
 
