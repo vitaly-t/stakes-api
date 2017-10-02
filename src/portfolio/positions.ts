@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import * as _ from 'lodash';
 import * as db from '../services/db';
 import * as debugMod from 'debug';
@@ -31,7 +32,7 @@ export class Position {
   @Column()
   active: boolean;
 
-  @Column({ readonly: true })
+  @Column({ readonly: true, jsonSchemaType: 'number' })
   tags : number[];
 
   @Column({ readonly: true })
@@ -168,5 +169,7 @@ export const accessors = {
 
   ...preMadeAccessors,
 };
+
+console.log(schema.output);
 
 

@@ -8,6 +8,7 @@ const COLUMNS = Symbol();
 export interface ColumnDecoratorOptions {
   required?: boolean;
   readonly?: boolean;
+  jsonSchemaType?: string;
 }
 
 export interface ColumnMetadata extends ColumnDecoratorOptions {
@@ -55,7 +56,27 @@ export function createJsonSchema(clazz, options? : CreateJsonSchemaOptions) {
       return;
     }
 
-    schema.properties[column.name] = { type: column.type };
+    let typeData;
+    let type = column.jsonSchemaType || _.toLower(column.type);
+    if(column.type === 'Array') {
+      typeData = {
+        type: 'array',
+      };
+      if(column.jsonSchemaType) {
+        typeData.items = {
+          type: column.jsonSchemaType
+        };
+      }
+    } else if(type === 'date') {
+      typeData = {
+        type: 'string',
+        format: 'date-time',
+      };
+    } else {
+      typeData = { type };
+    }
+
+    schema.properties[column.name] = typeData;
     if(column.required) {
       schema.required.push(column.name);
     }
