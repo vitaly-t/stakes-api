@@ -1,9 +1,9 @@
-import 'reflect-metadata';
 import * as _ from 'lodash';
 import * as db from '../services/db';
 import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
 import { Request } from '../types';
+import * as optionlegs from './optionlegs';
 import * as models from '../common/models';
 
 const debug = debugMod('positions');
@@ -112,9 +112,7 @@ export const accessors = {
           max(t.commissions) commissions,
           max(t.notional_risk) notional_risk,
           max(t.traded) traded,
-          json_agg(json_build_object(
-            'id', ol.id, 'price', ol.price, 'size', ol.size, 'call', ol.call, 'expiration', ol.expiration, 'strike', ol.strike
-          )) opened_legs
+          json_agg(json_build_object(${optionlegs.jsonObjectSyntax})) opened_legs
         FROM trades t
         JOIN positions p ON p.id=t.position
         LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
@@ -169,7 +167,3 @@ export const accessors = {
 
   ...preMadeAccessors,
 };
-
-console.log(schema.output);
-
-
