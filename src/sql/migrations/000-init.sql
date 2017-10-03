@@ -60,14 +60,14 @@ CREATE TABLE trades (
     user_id uuid references users,
     position uuid references positions,
 
-    broker_id varchar,
+    broker_id int references brokers,
 
     name varchar,
     note varchar,
     symbol varchar,
     size int,
     price money,
-    multiplier int,
+    multiplier int default 100,
     commissions money,
     notional_risk money,
 
