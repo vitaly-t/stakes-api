@@ -1,6 +1,7 @@
 import * as models from '../common/models';
 import * as _ from 'lodash';
 import * as optionlegs from './optionlegs';
+import * as db from '../services/db';
 import { Request } from '../types';
 
 const Column = models.Column;
@@ -89,18 +90,18 @@ export const accessors = {
     }
 
     let nonIdFields = [
-      'position', 'broker_id', 'name', 'note', 'symbol', 'size', 'price', 'multiplier', 'commissions', 'notional_risk', 'combined_into', 'traded', 'added',
+      'position', 'broker_id', 'name', 'strategy_description', 'note', 'symbol', 'multiplier', 'notional_risk', 'combined_into', 'traded', 'added',
     ];
 
     let fields;
-    let joinClause;
+    let joinGroupClause;
     if(options.includeLegs) {
-      joinClause = `LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
+      joinGroupClause = `LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
         GROUP BY t.id`;
       fields = _.map(nonIdFields, (field) => `MAX(t.${field}) ${field}`);
-      fields.push(`json_agg(json_build_object(${optionlegs.jsonObjectSyntax})) legs`)
+      fields.push(`json_agg(json_build_object(${optionlegs.jsonObjectSyntax})) legs`);
     } else {
-      fields = _.map(nonIdFields, (field) => `t.${field}`)
+      fields = _.map(nonIdFields, (field) => `t.${field}`);
     }
 
     let select = ['t.id'];
@@ -108,9 +109,49 @@ export const accessors = {
 
     let query = `SELECT ${select.join(', ')}
       FROM trades t
-      ${joinClause}
+      ${joinGroupClause}
       ${wheres.join(' AND ')}`;
 
+
+    return db.query(req.log, 'trade search', query, args);
   },
+
+  combine(req : Request, trades : string[]) {
+    if(trades.length === 1) {
+      return null;
+    }
+
+    let args = {
+      mainTrade: trades[0],
+      subsumed: trades.slice(1),
+    };
+
+    let queries = [`UPDATE trades
+      SET combined_into=$[mainTrade]
+      WHERE id=ANY($[subsumed]);`,
+
+      `UPDATE optionlegs SET opening_trade=$[mainTrade]
+        WHERE opening_trade = ANY($[subsumed]);`,
+
+      `UPDATE optionlegs SET closing_trade=$[mainTrade]
+        WHERE closing_trade = ANY($[subsumed]);`,
+
+      `WITH trade_risks AS (
+        SELECT SUM(notional_risk) risk
+        FROM trades
+        WHERE id=$[mainTrade] OR id=ANY($[subsumed])
+      )
+      UPDATE trades
+        SET notional_risk=risk
+        FROM trade_risks
+        WHERE id=$[mainTrade];`,
+    ];
+
+    req.log.debug(args, "Combining queries");
+    return db.pg.tx(t => t.batch(_.map(queries, (q, i) => {
+      return db.queryTx(req.log, `combine trades:${i}`, t, q, args);
+    })));
+  },
+
   ...preMadeAccessors,
 }
