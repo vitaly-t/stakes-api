@@ -35,6 +35,9 @@ CREATE TABLE accounts (
 CREATE UNIQUE INDEX ON accounts(user_id, id);
 CREATE INDEX ON accounts(user_id);
 
+-- A position will generally be all the trades that fit under a particular symbol.
+-- It is possible to split trades on a single position into multiple positions,
+-- but positions on different symbols can not be combined into one for now.
 CREATE TABLE positions (
     id uuid primary key default uuid_generate_v1(),
     user_id uuid references users,
@@ -57,18 +60,17 @@ CREATE INDEX ON positions using gin(tags);
 
 CREATE TABLE trades (
     id uuid primary key default uuid_generate_v1(),
+    trade_id varchar,
     user_id uuid references users,
     position uuid references positions,
 
     broker_id int references brokers,
 
     name varchar,
+    strategy_description varchar,
     note varchar,
     symbol varchar,
-    size int,
-    price money,
     multiplier int default 100,
-    commissions money,
     notional_risk money,
 
     combined_into uuid,
@@ -90,11 +92,14 @@ CREATE TABLE optionlegs (
     call boolean not null,
     expiration date not null,
     strike money not null,
+    commissions money,
     opening_trade uuid references trades,
-    closing_trade uuid references trades
+    closing_trade uuid references trades,
+    expired boolean
 );
 
 CREATE INDEX ON optionlegs(user_id, symbol);
+CREATE INDEX ON optionlegs(user_id, symbol) where expired=false and closing_trade is null;
 CREATE INDEX ON optionlegs(user_id, symbol, expiration, strike, call);
 CREATE INDEX ON optionlegs(opening_trade);
 CREATE INDEX ON optionlegs(closing_trade);
