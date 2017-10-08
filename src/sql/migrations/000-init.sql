@@ -73,8 +73,10 @@ CREATE TABLE trades (
     multiplier int default 100,
     notional_risk money,
 
-    combined_into uuid,
+    profit_target_pct real,
+    stop_loss real,
 
+    combined_into uuid,
     traded timestamptz default now(),
 
     added timestamptz default now()
@@ -95,11 +97,13 @@ CREATE TABLE optionlegs (
     commissions money,
     opening_trade uuid references trades,
     closing_trade uuid references trades,
-    expired boolean
+    expired boolean,
+
+    orig_delta real, -- The delta at the time that the leg was opened.
+    total_profit money -- Set when a trade is closed.
 );
 
 CREATE INDEX ON optionlegs(user_id, symbol);
-CREATE INDEX ON optionlegs(user_id, symbol) where expired=false and closing_trade is null;
 CREATE INDEX ON optionlegs(user_id, symbol, expiration, strike, call);
 CREATE INDEX ON optionlegs(opening_trade);
 CREATE INDEX ON optionlegs(closing_trade);
@@ -117,3 +121,55 @@ INSERT INTO brokers (short_name, long_name) VALUES
     ('IB', 'Interactive Brokers'),
     ('TOS', 'ThinkOrSwim'),
     ('TW', 'TastyWorks');
+
+CREATE TABLE historic_equity_prices (
+    symbol varchar not null,
+    quote_date date not null,
+    iv double precision,
+    opening money,
+    closing money,
+    high money,
+    low money
+);
+
+CREATE UNIQUE INDEX ON historic_equity_prices(symbol, quote_date);
+CREATE INDEX ON historic_equity_prices(symbol);
+
+CREATE TABLE historic_equity_technicals (
+    name varchar not null,
+    symbol varchar not null,
+    dt date not null,
+    variable varchar,
+    value double precision not null
+);
+
+CREATE UNIQUE INDEX ON historic_equity_technicals(name, symbol, dt, variable);
+
+CREATE TABLE current_equity_prices (
+    symbol varchar primary key,
+    iv double precision,
+    bid money,
+    ask money,
+    last money
+);
+
+CREATE TABLE current_option_prices (
+    symbol varchar not null,
+    expiration date not null,
+    strike money not null,
+    call boolean not null,
+
+    bid money,
+    ask money,
+    last money,
+
+    iv real,
+    delta real,
+    gamma real,
+    theta real,
+    vega real
+);
+
+CREATE UNIQUE INDEX ON current_option_prices(symbol, expiry, strike, call);
+CREATE INDEX ON current_option_prices(symbol);
+

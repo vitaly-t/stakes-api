@@ -29,6 +29,10 @@ export class OptionLeg {
   opening_trade: string;
   @Column()
   closing_trade: string;
+  @Column({ readonly: true })
+  orig_delta: number;
+  @Column({ readonly: true })
+  total_profit: number;
   @Column()
   expired: boolean;
 }
@@ -37,7 +41,7 @@ const { accessors: preMadeAccessors, schema } = models.makeAllData(OptionLeg, 'o
 export { schema };
 
 export const jsonObjectSyntax = _.map(
-  models.schemaFieldList(schema.output, 'user_id', 'symbol'),
+  models.schemaFieldListWithout(schema.output, 'user_id', 'symbol'),
   (v, k) => `'${k}', ol.${k}`
 ).join(', ');
 

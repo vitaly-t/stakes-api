@@ -64,6 +64,8 @@ export interface GetOptions {
   includeCombined? : boolean;
 }
 
+const nonIdFields = models.schemaFieldListWithout(schema.output, 'id', 'user_id');
+
 export const accessors = {
   get: (req : Request, options : GetOptions = {}) => {
     let wheres = ['user_id=$[user_id]'];
@@ -89,17 +91,17 @@ export const accessors = {
       wheres.push('combined_trade IS NULL');
     }
 
-    let nonIdFields = [
-      'position', 'broker_id', 'name', 'strategy_description', 'note', 'symbol', 'multiplier', 'notional_risk', 'combined_into', 'traded', 'added',
-    ];
-
     let fields;
     let joinGroupClause;
     if(options.includeLegs) {
       joinGroupClause = `LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
+        LEFT JOIN current_option_prices op USING(symbol, expiration, strike, call)
         GROUP BY t.id`;
       fields = _.map(nonIdFields, (field) => `MAX(t.${field}) ${field}`);
-      fields.push(`json_agg(json_build_object(${optionlegs.jsonObjectSyntax})) legs`);
+      fields.push(`json_agg(json_build_object(
+        ${optionlegs.jsonObjectSyntax},
+        'bid', op.bid, 'ask', op.ask, 'last', op.last, 'delta', op.delta
+      )) legs`);
     } else {
       fields = _.map(nonIdFields, (field) => `t.${field}`);
     }

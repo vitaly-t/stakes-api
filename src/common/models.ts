@@ -151,6 +151,6 @@ export function makeAllData<T>(clazz : T, tableName: string) {
   };
 }
 
-export function schemaFieldList(schema, ...omit : string[]) {
+export function schemaFieldListWithout(schema, ...omit : string[]) {
   return _.without(_.keys(schema.output.properties), ...omit);
 }
