@@ -177,3 +177,11 @@ CREATE TABLE current_option_prices (
 CREATE UNIQUE INDEX ON current_option_prices(symbol, expiry, strike, call);
 CREATE INDEX ON current_option_prices(symbol);
 
+CREATE TABLE fetches (
+    user_id uuid not null,
+    type varchar not null,
+    ts timestamptz default now()
+);
+
+CREATE INDEX ON fetches(user_id, type);
+CREATE UNIQUE INDEX ON fetches(user_id, type, ts);
