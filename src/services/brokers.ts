@@ -15,10 +15,10 @@ function doRequest(logger : BaseLogger, url : string, method : string ="GET", bo
   .then((r) => r.data);
 }
 
-export async function getTrades(req : Request, onlyLatest : boolean) {
+export async function getTrades(req : Request, retrieveAll : boolean) {
   let since;
   let url = '/trades';
-  if(onlyLatest) {
+  if(!retrieveAll) {
     let latest = await db.query(req.log, 'get last trades fetch time', `SELECT ts FROM fetches WHERE user_id=$[user_id] AND type='trades`, { user_id: req.user.id });
     if(latest.length) {
       url += `?start=${latest[0].ts.toISOString()}`;
