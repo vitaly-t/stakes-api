@@ -150,7 +150,9 @@ CREATE TABLE current_equity_prices (
     iv double precision,
     bid money,
     ask money,
-    last money
+    last money,
+
+    updated timestamptz default now()
 );
 
 CREATE TABLE current_option_prices (
@@ -167,7 +169,9 @@ CREATE TABLE current_option_prices (
     delta real,
     gamma real,
     theta real,
-    vega real
+    vega real,
+
+    updated timestamptz default now()
 );
 
 CREATE UNIQUE INDEX ON current_option_prices(symbol, expiry, strike, call);

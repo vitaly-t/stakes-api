@@ -17,12 +17,15 @@
     "pg-promise": "^6.10.1",
     "pino": "^4.7.2",
     "reflect-metadata": "^0.1.10",
+    "request": "^2.83.0",
+    "request-promise": "^4.2.2",
     "umzug": "^2.0.1"
   },
   "devDependencies": {
     "@types/debug": "^0.0.30",
     "@types/lodash": "^4.14.76",
     "@types/node": "^8.0.31",
-    "@types/pino": "^4.7.0"
+    "@types/pino": "^4.7.0",
+    "@types/request-promise": "^4.1.38"
   }
 }
