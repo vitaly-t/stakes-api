@@ -13,6 +13,9 @@ export class Trade {
   @Column({ readonly: true })
   user_id : string;
 
+  @Column({ readonly: true })
+  trade_id: string;
+
   @Column({ required : true })
   position : string;
 
@@ -52,6 +55,8 @@ export class Trade {
   @Column({ readonly : true })
   added : Date;
 }
+
+export type ITrade = models.I<Trade>;
 
 const { accessors: preMadeAccessors, schema } = models.makeAllData(Trade, 'trades');
 

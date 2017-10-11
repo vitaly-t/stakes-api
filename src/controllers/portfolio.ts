@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { Request, Reply } from '../types';
 import * as brokers from '../services/brokers';
+import * as trades from '../portfolio/trades';
 import * as positionsModel from '../models/positions';
 import * as tradesModel from '../models/trades';
 
@@ -24,7 +25,7 @@ module.exports = function(fastify : FastifyInstance, opts, next) {
       },
     },
     handler: async (req : Request, rep : Reply) => {
-      let newTrades = await brokers.getTrades(req, req.query.retrieve_all);
+      let newTrades = await trades.fetch(req, req.query.retrieve_all);
       // Process and save them to DB (using a function in portfolio/trades.ts)
 
 
@@ -34,6 +35,18 @@ module.exports = function(fastify : FastifyInstance, opts, next) {
       });
     },
   });
+
+  fastify.route({
+    url: '/trades/addraw',
+    method: 'POST',
+    schema: {
+
+    },
+    handler: async (req : Request, rep : Reply) => {
+      await trades.process(req, req.body);
+
+    }
+  })
 
   fastify.route({
     url: '/positions',

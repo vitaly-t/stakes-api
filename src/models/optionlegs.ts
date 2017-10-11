@@ -28,16 +28,18 @@ export class OptionLeg {
   @Column({ required: true })
   opening_trade: string;
   @Column()
-  closing_trade: string;
+  closing_trade?: string;
   @Column({ readonly: true })
   orig_delta: number;
   @Column({ readonly: true })
-  total_profit: number;
+  total_profit?: number;
   @Column()
   expired: boolean;
 }
 
-const { accessors: preMadeAccessors, schema } = models.makeAllData(OptionLeg, 'optionlegs');
+export type IOptionLeg = models.I<OptionLeg>;
+
+const { accessors: preMadeAccessors, schema } = models.makeAllData( OptionLeg, 'optionlegs');
 export { schema };
 
 export const jsonObjectSyntax = _.map(
@@ -47,9 +49,30 @@ export const jsonObjectSyntax = _.map(
 
 export const accessors = {
   ...preMadeAccessors,
-  split: (req : Request, id : string, splitOff: number) => {
+  split: (req : Request, ids : string[], splitOff: number) => {
     // Split an option leg into two legs, identical except for the size. This is done to facilitate
-    // partial position closing.
-    throw new Error("Not implemented");
+    // partial position closing/rolling.
+    return db.pg.tx(async (t) => {
+      let orig = await db.queryTx(req.log, `split: reduce size`, t, `UPDATE optionlegs
+        SET size = size - $[splitOff]
+        WHERE ids=ANY($[id]) AND user_id=$[user_id]
+        RETURNING *`, { ids, user_id: req.user.id }) as IOptionLeg[];
+
+      if(orig.length !== ids.length) {
+        throw new Error("Didn't find all requested legs");
+      }
+
+      let newLegs = _.map(orig, (o) => {
+        if(o.size <= 0) {
+          throw new Error(`Can't split ${splitOff} from leg ${o.id} of size ${o.size}`);
+        }
+
+        o.id = undefined;
+        o.size = splitOff;
+        return o;
+      }) as OptionLeg[];
+
+      return preMadeAccessors.add(req, newLegs);
+    });
   }
 };

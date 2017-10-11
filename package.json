@@ -19,7 +19,8 @@
     "reflect-metadata": "^0.1.10",
     "request": "^2.83.0",
     "request-promise": "^4.2.2",
-    "umzug": "^2.0.1"
+    "umzug": "^2.0.1",
+    "uuid": "^3.1.0"
   },
   "devDependencies": {
     "@types/debug": "^0.0.30",

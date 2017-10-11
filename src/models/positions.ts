@@ -42,6 +42,8 @@ export class Position {
   latest_trade: Date;
 }
 
+export type IPosition = models.I<Position>;
+
 const { accessors: preMadeAccessors, schema } = models.makeAllData(Position, 'positions');
 export { schema };
 
@@ -112,7 +114,7 @@ export const accessors = {
           max(t.commissions) commissions,
           max(t.notional_risk) notional_risk,
           max(t.traded) traded,
-          json_agg(json_build_object(${optionlegs.jsonObjectSyntax})) opened_legs
+          json_agg(row_to_json(ol.*)) opened_legs
         FROM trades t
         JOIN positions p ON p.id=t.position
         LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
@@ -120,18 +122,7 @@ export const accessors = {
       ),
       trades_agg AS (
         SELECT position,
-          json_agg(json_build_object(
-            'id', t.id,
-            'name', t.name,
-            'note', t.note,
-            'size', t.size,
-            'price', t.price,
-            'multiplier', t.multiplier,
-            'comissions', t.commissions,
-            'notional_risk', t.notional_risk,
-            'traded', t.traded,
-            'opened_legs', t.opened_legs
-          )) trades
+          json_agg(row_to_json(t.*)) trades
           FROM matching_trades
           JOIN positions on positions.id=trades.position
           GROUP BY position

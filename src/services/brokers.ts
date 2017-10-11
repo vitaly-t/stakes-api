@@ -4,6 +4,30 @@ import { BaseLogger } from 'pino';
 import * as request from 'request-promise';
 import * as db from './db';
 
+export interface Execution {
+  id: string;
+  type: string;
+  strike: number;
+  expiration: string;
+  multiplier: string;
+  exchange: string;
+  side: string;
+  size: number;
+  price: number;
+  commissions: number;
+  realized_pnl: number;
+  time: string;
+};
+
+export interface Trade {
+  account: string;
+  broker: string;
+  id: string;
+  symbol: string;
+  time: string;
+  executions: Execution[];
+}
+
 function doRequest(logger : BaseLogger, url : string, method : string ="GET", body? : object) {
   return request({
     url,
@@ -15,7 +39,7 @@ function doRequest(logger : BaseLogger, url : string, method : string ="GET", bo
   .then((r) => r.data);
 }
 
-export async function getTrades(req : Request, retrieveAll : boolean) {
+export async function getTrades(req : Request, retrieveAll : boolean) : Promise<Trade[]> {
   let since;
   let url = '/trades';
   if(!retrieveAll) {
