@@ -5,6 +5,10 @@ import 'reflect-metadata';
 
 const COLUMNS = Symbol();
 
+export type I<T> = {
+  [K in keyof T]: T[K];
+}
+
 export interface ColumnDecoratorOptions {
   required?: boolean;
   readonly?: boolean;
@@ -85,19 +89,32 @@ export function createJsonSchema(clazz, options? : CreateJsonSchemaOptions) {
   return schema;
 }
 
+function skipCol(col) {
+  return col.value === undefined;
+}
 
 export function createColumnSet(clazz, tableName: string) {
-  let columns = Reflect.getMetadata(COLUMNS, clazz.prototype);
+  let columns = Reflect.getMetadata(COLUMNS, clazz.prototype) as ColumnMetadata[];
   if(!columns) {
     throw new Error(`Expected columns but found none for ${clazz}`);
   }
-  return new db.helpers.ColumnSet(_.map(columns, 'name'), { table: tableName });
+  let columnDef = _.map(columns, (col) => {
+    let val = {
+      name: col.name,
+      skip: skipCol,
+      cnd: col.readonly,
+    };
+  });
+
+  return new db.helpers.ColumnSet(columnDef, { table: tableName });
 }
 
-export function makeAccessors<T>(clazz : T, tableName: string) {
-  type PartialT = {
-    [K in keyof T]?: T[K];
-  }
+type Partial<T> = {
+  [K in keyof T]?: T[K];
+};
+
+export function makeAccessors<T>(clazz: { new(): T; }, tableName: string) {
+  type PartialT = Partial<T>;
 
   const columnSet = createColumnSet(clazz, tableName);
 
@@ -114,13 +131,13 @@ export function makeAccessors<T>(clazz : T, tableName: string) {
   const getAllQueryName = `get all ${tableName}`;
 
   return {
-    add: function(req: Request, data: PartialT) {
+    add: function(req: Request, data: PartialT | PartialT[]) {
       let q = db.helpers.insert(data, columnSet) + ' RETURNING *';
       return db.query(req.log, addQueryName, q);
     },
 
     update: function(req: Request, id: string, data: PartialT) {
-      let q = db.helpers.update(data, columnSet);
+      let q = db.helpers.update(data, null, tableName);
       q += ` WHERE id=$[id] AND user_id=$[user_id]
       RETURNING *`;
       return db.query(req.log, updateQueryName, q, { id, user_id: req.user.id });
@@ -141,7 +158,7 @@ export function makeAccessors<T>(clazz : T, tableName: string) {
 
 }
 
-export function makeAllData<T>(clazz : T, tableName: string) {
+export function makeAllData<T>(clazz : { new(): T; }, tableName: string) {
   return {
     accessors: makeAccessors(clazz, tableName),
     schema: {
