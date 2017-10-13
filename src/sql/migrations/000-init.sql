@@ -46,9 +46,12 @@ CREATE TABLE positions (
     name varchar,
     note varchar,
     tags int[],
+    notional_risk money,
+    profit_target_pct real,
+    stop_loss real,
+
     active boolean default true,
     added timestamptz default now(),
-    latest_trade timestamptz default now(),
 
     FOREIGN KEY (account, user_id) REFERENCES accounts
 );
@@ -68,13 +71,10 @@ CREATE TABLE trades (
 
     name varchar,
     strategy_description varchar,
+    tags int[],
     note varchar,
     symbol varchar,
     multiplier int default 100,
-    notional_risk money,
-
-    profit_target_pct real,
-    stop_loss real,
 
     combined_into uuid,
     traded timestamptz default now(),

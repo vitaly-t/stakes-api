@@ -3,8 +3,8 @@ import * as db from '../services/db';
 import * as uuid from 'uuid';
 import { Request, Reply } from '../types';
 import * as brokers from '../services/brokers';
-import { OptionLeg } from '../models/optionlegs';
-import { Trade } from '../models/trades';
+import { IOptionLeg } from '../models/optionlegs';
+import { ITrade } from '../models/trades';
 
 export async function fetch(req : Request, retrieveAll : boolean) {
   let newTrades = await brokers.getTrades(req, req.query.retrieve_all);
@@ -15,21 +15,26 @@ export async function fetch(req : Request, retrieveAll : boolean) {
 export async function process(req : Request, input : brokers.Trade[]) {
 
   let seenSymbols = new Set();
-  let trades : Trade[] = [];
-  let legs : OptionLeg[] = [];
+  let trades : ITrade[] = [];
+  let legs : IOptionLeg[] = [];
+
+  let importDate = new Date();
 
   _.each(input, (t) => {
     let id = uuid.v1();
-    let trade : Trade = {
+    let trade : ITrade = {
       id: id,
       user_id: req.user.id,
       trade_id: t.id,
       symbol: t.symbol,
       traded: new Date(t.time),
-      commissions: 0,
-      price: 0,
+      multiplier: null, // TODO fill this in
+      tags: null,
+      strategy_description: null, // TODO Calculate this from the executions.
+      account: null, // Get this from the table of accounts
       position: null, // Fill this in at the end
       broker_id: null, // get this from the table of broker ids
+      added: importDate,
     };
 
     seenSymbols.add(t.symbol);

@@ -1,51 +1,60 @@
-import * as models from '../common/models';
 import * as _ from 'lodash';
-import * as optionlegs from './optionlegs';
 import * as db from '../services/db';
+import * as debugMod from 'debug';
+import { BaseLogger } from 'pino';
 import { Request } from '../types';
+import * as models from './models';
 
-const Column = models.Column;
+import {
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLList,
+  GraphQLNonNull,
+  GraphQLInt,
+  GraphQLBoolean,
+  GraphQLFloat,
+} from '../graphql';
 
-export class OptionLeg {
-  @Column({ readonly: true })
+export interface IOptionLeg {
   id: string;
-  @Column({ readonly: true })
   user_id: string;
-  @Column({ required: true })
   symbol: string;
-  @Column({ required: true })
   price: number;
-  @Column({ required: true })
   size: number;
-  @Column({ required: true })
   call: boolean;
-  @Column({ required: true })
-  expiration: Date;
-  @Column({ required: true })
+  expiration: string;
   strike: number;
-  @Column({ required: true })
   commissions: number;
-  @Column({ required: true })
+  expired: number;
   opening_trade: string;
-  @Column()
-  closing_trade?: string;
-  @Column({ readonly: true })
+  closing_trade: string;
   orig_delta: number;
-  @Column({ readonly: true })
-  total_profit?: number;
-  @Column()
-  expired: boolean;
+  total_profit: number;
 }
 
-export type IOptionLeg = models.I<OptionLeg>;
+export const OptionLeg = new GraphQLObjectType({
+  name: 'OptionLeg',
+  sqlTable: 'optionlegs',
+  uniqueKey: 'id',
+  fields: () => ({
+    id: { type: GraphQLString },
+    user_id: { type: GraphQLString },
+    symbol: { type: new GraphQLNonNull(GraphQLString) },
+    price: { type: GraphQLFloat },
+    size: { type: GraphQLInt },
+    call: { type: GraphQLBoolean },
+    expiration: { type: GraphQLString },
+    strike: { type: GraphQLFloat },
+    commissions: { type: GraphQLFloat },
+    expired: { type: GraphQLBoolean },
+    opening_trade: { type: GraphQLString },
+    closing_trade: { type: GraphQLString },
+    orig_delta: { type: GraphQLFloat },
+    total_profit: { type: GraphQLFloat },
+  }),
+});
 
-const { accessors: preMadeAccessors, schema } = models.makeAllData( OptionLeg, 'optionlegs');
-export { schema };
-
-export const jsonObjectSyntax = _.map(
-  models.schemaFieldListWithout(schema.output, 'user_id', 'symbol'),
-  (v, k) => `'${k}', ol.${k}`
-).join(', ');
+const { accessors: preMadeAccessors } = models.makeAllData( OptionLeg, 'optionlegs');
 
 export const accessors = {
   ...preMadeAccessors,
@@ -53,10 +62,10 @@ export const accessors = {
     // Split an option leg into two legs, identical except for the size. This is done to facilitate
     // partial position closing/rolling.
     return db.pg.tx(async (t) => {
-      let orig = await db.queryTx(req.log, `split: reduce size`, t, `UPDATE optionlegs
+      let orig = await db.query(req.log, `split: reduce size`, `UPDATE optionlegs
         SET size = size - $[splitOff]
         WHERE ids=ANY($[id]) AND user_id=$[user_id]
-        RETURNING *`, { ids, user_id: req.user.id }) as IOptionLeg[];
+        RETURNING *`, { ids, user_id: req.user.id }, t);
 
       if(orig.length !== ids.length) {
         throw new Error("Didn't find all requested legs");
@@ -70,7 +79,7 @@ export const accessors = {
         o.id = undefined;
         o.size = splitOff;
         return o;
-      }) as OptionLeg[];
+      });
 
       return preMadeAccessors.add(req, newLegs);
     });

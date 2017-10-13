@@ -1,128 +1,75 @@
-import * as models from '../common/models';
 import * as _ from 'lodash';
-import * as optionlegs from './optionlegs';
 import * as db from '../services/db';
+import * as debugMod from 'debug';
+import { BaseLogger } from 'pino';
 import { Request } from '../types';
+import { OptionLeg } from './optionlegs';
+import * as models from './models';
 
-const Column = models.Column;
+import {
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLList,
+  GraphQLNonNull,
+  GraphQLInt,
+  GraphQLBoolean,
+  GraphQLFloat,
+} from '../graphql';
 
-export class Trade {
-  @Column({ readonly: true })
-  id : string;
-
-  @Column({ readonly: true })
-  user_id : string;
-
-  @Column({ readonly: true })
+export interface ITrade {
+  id: string;
   trade_id: string;
-
-  @Column({ required : true })
-  position : string;
-
-  @Column()
-  broker_id : number;
-
-  @Column()
-  name : string;
-
-  @Column()
-  note : string;
-
-  @Column({ required: true})
-  symbol : string;
-
-  @Column({ required: true })
-  size : number;
-
-  @Column({ required: true })
-  price : number;
-
-  @Column()
-  multiplier : number;
-
-  @Column()
-  commissions : number;
-
-  @Column()
-  notional_risk : number;
-
-  @Column({ readonly: true })
-  combined_into : string;
-
-  @Column()
-  traded : Date;
-
-  @Column({ readonly : true })
-  added : Date;
+  user_id: string;
+  position: string;
+  broker_id: number;
+  account: string;
+  name?: string;
+  strategy_description: string;
+  tags: number[];
+  note?: string;
+  symbol: string;
+  multiplier: number;
+  combined_into?: string;
+  traded: Date;
+  added: Date;
 }
 
-export type ITrade = models.I<Trade>;
+export const Trade = new GraphQLObjectType({
+  name: 'Trade',
+  sqlTable: 'trades',
+  uniqueKey: 'id',
+  fields: () => ({
+    id: { type: GraphQLString },
+    trade_id: { type: GraphQLString },
+    user_id: { type: GraphQLString },
+    position: { type: GraphQLString },
+    account: { type: new GraphQLNonNull(GraphQLString) },
+    name: { type: GraphQLString },
+    strategy_description: { type: GraphQLString },
+    tags: { type : new GraphQLList(GraphQLInt) },
+    note: { type: GraphQLString },
+    symbol: { type: new GraphQLNonNull(GraphQLString) },
+    multiplier: { type: GraphQLInt },
+    notional_risk: { type: GraphQLFloat },
+    profit_target_pct: { type: GraphQLFloat },
+    stop_loss: { type: GraphQLFloat },
+    combined_into: { type: GraphQLString },
+    traded: { type: GraphQLString },
+    added: { type: GraphQLString },
 
-const { accessors: preMadeAccessors, schema } = models.makeAllData(Trade, 'trades');
+    legs : {
+      type: OptionLeg,
+      sqlJoin(tradesTable, legsTable) {
+        return `${tradesTable}.id = ${legsTable}.opening_trade`;
+      },
+    },
+  }),
+});
 
-export { schema };
-
-export interface GetOptions {
-  id ? : string | string[];
-  symbol? : string;
-  includeLegs? : boolean;
-  includeCombined? : boolean;
-}
-
-const nonIdFields = models.schemaFieldListWithout(schema.output, 'id', 'user_id');
+const { accessors: preMadeAccessors } = models.makeAllData(Trade, 'trades');
 
 export const accessors = {
-  get: (req : Request, options : GetOptions = {}) => {
-    let wheres = ['user_id=$[user_id]'];
-    let args : any = {
-      user_id: req.user.id,
-    };
-
-    if(options.id) {
-      args.id = options.id;
-      if(_.isArray(options.id)) {
-        wheres.push('id = ANY($[id]');
-      } else {
-        wheres.push('id=$[id]');
-      }
-    }
-
-    if(options.symbol) {
-      args.symbol = options.symbol;
-      wheres.push('symbol = $[symbol]');
-    }
-
-    if(options.includeCombined !== true) {
-      wheres.push('combined_trade IS NULL');
-    }
-
-    let fields;
-    let joinGroupClause;
-    if(options.includeLegs) {
-      joinGroupClause = `LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
-        LEFT JOIN current_option_prices op USING(symbol, expiration, strike, call)
-        GROUP BY t.id`;
-      fields = _.map(nonIdFields, (field) => `MAX(t.${field}) ${field}`);
-      fields.push(`json_agg(json_build_object(
-        ${optionlegs.jsonObjectSyntax},
-        'bid', op.bid, 'ask', op.ask, 'last', op.last, 'delta', op.delta
-      )) legs`);
-    } else {
-      fields = _.map(nonIdFields, (field) => `t.${field}`);
-    }
-
-    let select = ['t.id'];
-    select.push(...fields);
-
-    let query = `SELECT ${select.join(', ')}
-      FROM trades t
-      ${joinGroupClause}
-      ${wheres.join(' AND ')}`;
-
-
-    return db.query(req.log, 'trade search', query, args);
-  },
-
+  ...preMadeAccessors,
   combine(req : Request, trades : string[]) {
     if(trades.length === 1) {
       return null;
@@ -156,9 +103,7 @@ export const accessors = {
 
     req.log.debug(args, "Combining queries");
     return db.pg.tx(t => t.batch(_.map(queries, (q, i) => {
-      return db.queryTx(req.log, `combine trades:${i}`, t, q, args);
+      return db.query(req.log, `combine trades:${i}`, q, args, t);
     })));
   },
-
-  ...preMadeAccessors,
-}
+};

@@ -3,140 +3,110 @@ import * as db from '../services/db';
 import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
 import { Request } from '../types';
-import * as optionlegs from './optionlegs';
-import * as models from '../common/models';
+import { Trade, ITrade } from './trades';
+import * as models from './models';
 
-const debug = debugMod('positions');
+import {
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLList,
+  GraphQLNonNull,
+  GraphQLInt,
+  GraphQLBoolean,
+  GraphQLFloat,
+} from '../graphql';
 
-const Column = models.Column;
-
-export class Position {
-  @Column({ readonly: true })
-  id : string;
-
-  @Column({ readonly: true })
+export interface IPosition {
+  id: string;
   user_id: string;
-
-  @Column()
   account: string;
-
-  @Column({ required: true })
   symbol: string;
-
-  @Column({ required: true })
   name: string;
-
-  @Column()
   note: string;
-
-  @Column()
+  tags: number[];
+  notional_risk: string;
+  profit_target_pct: number;
+  stop_loss: number;
   active: boolean;
+  added: string;
 
-  @Column({ readonly: true, jsonSchemaType: 'number' })
-  tags : number[];
-
-  @Column({ readonly: true })
-  added: Date;
-
-  @Column({ readonly: true })
-  latest_trade: Date;
+  trades? : ITrade[];
 }
 
-export type IPosition = models.I<Position>;
+export const Position = new GraphQLObjectType({
+  name: 'Position',
+  sqlTable: 'positions',
+  uniqueKey: 'id',
+  fields: () => ({
+    id: { type: GraphQLString },
+    user_id: { type: GraphQLString },
+    account: { type: new GraphQLNonNull(GraphQLString) },
+    symbol: { type: new GraphQLNonNull(GraphQLString) },
+    name: { type: GraphQLString },
+    note: { type: GraphQLString },
+    tags: {  type: new GraphQLList(GraphQLInt) },
+    notional_risk: { type: GraphQLString },
+    profit_target_pct: { type: GraphQLFloat },
+    stop_loss: { type: GraphQLFloat },
+    active: { type: GraphQLBoolean },
+    added: { type: GraphQLString },
 
-const { accessors: preMadeAccessors, schema } = models.makeAllData(Position, 'positions');
-export { schema };
+    trades: {
+      type: new GraphQLList(Trade),
+      sqlJoin(positionTable, tradesTable) {
+        return `${positionTable}.id = ${tradesTable}.position`;
+      }
+    },
+  }),
+});
 
-export interface GetOptions {
-  id?: string | string[];
-  symbol? : string;
-  tags?: number[];
-  active?: boolean;
-  includeTrades?: boolean;
-  minDate? : Date;
-  maxDate? : Date;
-}
+export const rootQueryFields = {
+  position: {
+    type: Position,
+    args: {
+      id: { type: GraphQLString },
+      symbol: { type: GraphQLString },
+      tags : { type : new GraphQLList(GraphQLInt) },
+      active: { type: GraphQLBoolean },
+      minDate: { type: GraphQLString },
+      maxDate: { type: GraphQLString },
+    },
+    where: (table, args, context) => {
+      let wheres = [`${table}.user_id='${context.user.id}`];
+
+      if(args.id) {
+        wheres.push(`${table}.id=${db.as.text(args.id)}`);
+      }
+
+      if(args.tags) {
+        wheres.push(`${table}.tags && ${db.as.array(args.tags)}`);
+      }
+
+      if(_.has(args, 'active')) {
+        wheres.push(`${table}.active=${db.as.bool(args.active)}`);
+      }
+
+      if(args.minDate) {
+        let x = new Date(args.minDate);
+        if(!x) { throw new Error("invalid value for minDate"); }
+        wheres.push(`${table}.added >= ${db.as.date(x)}`);
+      }
+
+      if(args.maxDate) {
+        let x = new Date(args.maxDate);
+        if(!x) { throw new Error("invalid value for maxDate"); }
+        wheres.push(`${table}.added <= ${db.as.date(x)}`);
+      }
+
+      return wheres.join(' AND ');
+    }
+  }
+};
+
+const { accessors: preMadeAccessors } = models.makeAllData(Position, 'positions');
 
 export const accessors = {
-  get: (req: Request, options : GetOptions = {}) => {
-    let wheres = ['user_id=$[user_id]'];
-    let args : any = {
-      user_id: req.user.id,
-    };
-
-    if(options.id) {
-      args.id = options.id;
-      if(_.isArray(options.id)) {
-        wheres.push('id = ANY($[id]');
-      } else {
-        wheres.push('id=$[id]');
-      }
-    }
-
-    if(options.tags) {
-      args.tags = options.tags;
-      wheres.push('tags && $[tags]');
-    }
-
-    if(_.has(options, 'active')) {
-      args.active = Boolean(options.active);
-      wheres.push('active=$[active]');
-    }
-
-    if(options.minDate) {
-      args.minDate = options.minDate;
-      wheres.push('added >= $[minDate]');
-    }
-
-    if(options.maxDate) {
-      args.maxDate = options.maxDate;
-      wheres.push('latest_trade <= $[maxDate]');
-    }
-
-    let query = `SELECT p.id, p.account, p.symbol, p.name, p.tags, p.note, p.active, p.added, p.latest_trade, p.tags
-      FROM positions p
-      WHERE ${wheres.join(' AND ')}`;
-
-    if(options.includeTrades) {
-      // Get all trades and legs.
-      query = `
-      WITH positions AS (
-        ${query}
-      ),
-      matching_trades AS (
-        SELECT t.id,
-          max(t.position) position,
-          max(t.name) name,
-          max(t.note) note,
-          max(t.size) size,
-          max(t.price) price,
-          max(t.multiplier) multiplier,
-          max(t.commissions) commissions,
-          max(t.notional_risk) notional_risk,
-          max(t.traded) traded,
-          json_agg(row_to_json(ol.*)) opened_legs
-        FROM trades t
-        JOIN positions p ON p.id=t.position
-        LEFT JOIN optionlegs ol ON ol.opening_trade=t.id
-        GROUP BY t.id
-      ),
-      trades_agg AS (
-        SELECT position,
-          json_agg(row_to_json(t.*)) trades
-          FROM matching_trades
-          JOIN positions on positions.id=trades.position
-          GROUP BY position
-      )
-      SELECT positions.*, t.trades
-      FROM positions
-      JOIN trades_agg t on positions.id=t.position
-      ORDER BY added DESC`;
-    } else {
-      query = query + '\nORDER BY added DESC';
-    }
-
-    return db.query(req.log, 'search positions', query, args);
-  },
+  ...preMadeAccessors,
 
   addTag: (req : Request, id : string, tag : number | number[]) => {
     if(!_.isArray(tag)) {
@@ -145,16 +115,22 @@ export const accessors = {
 
     let query = `UPDATE positions SET tags = tags || $[tag]
         WHERE id=$[id] AND user_id=$[user_id]) AND NOT (tags && $[tag])
-        RETURNING id`;
+        RETURNING id, tags`;
     return db.query(req.log, 'add tag', query, { id, tag, user_id: req.user.id });
   },
 
   removeTag: (req: Request, id: string, tag: number) => {
     const query = `UPDATE positions SET tags = array_remove(tags, $[tag])
       WHERE id=$[id] AND user_id=$[user_id]
-      RETURNING id`;
+      RETURNING id, tags`;
     return db.query(req.log, 'remove tag', query, { id, tag, user_id: req.user.id });
   },
 
-  ...preMadeAccessors,
+  setTags: (req: Request, id: string, tags: number[]) => {
+    const query = `UPDATE positions SET tags = $[tags]
+      WHERE id=$[id] AND user_id=$[user_id]
+      RETURNING id, tags`;
+    return db.query(req.log, 'remove tag', query, { id, tags, user_id: req.user.id });
+  },
+
 };
