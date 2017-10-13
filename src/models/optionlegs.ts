@@ -13,6 +13,7 @@ import {
   GraphQLInt,
   GraphQLBoolean,
   GraphQLFloat,
+  GraphQLID,
 } from '../graphql';
 
 export interface IOptionLeg {
@@ -37,7 +38,7 @@ export const OptionLeg = new GraphQLObjectType({
   sqlTable: 'optionlegs',
   uniqueKey: 'id',
   fields: () => ({
-    id: { type: GraphQLString },
+    id: { type: GraphQLID },
     user_id: { type: GraphQLString },
     symbol: { type: new GraphQLNonNull(GraphQLString) },
     price: { type: GraphQLFloat },

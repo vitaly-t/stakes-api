@@ -3,7 +3,7 @@ import * as db from '../services/db';
 import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
 import { Request } from '../types';
-import { OptionLeg } from './optionlegs';
+import { OptionLeg, IOptionLeg } from './optionlegs';
 import * as models from './models';
 
 import {
@@ -14,6 +14,7 @@ import {
   GraphQLInt,
   GraphQLBoolean,
   GraphQLFloat,
+  GraphQLID,
 } from '../graphql';
 
 export interface ITrade {
@@ -32,6 +33,8 @@ export interface ITrade {
   combined_into?: string;
   traded: Date;
   added: Date;
+
+  legs?: IOptionLeg[];
 }
 
 export const Trade = new GraphQLObjectType({
@@ -39,7 +42,7 @@ export const Trade = new GraphQLObjectType({
   sqlTable: 'trades',
   uniqueKey: 'id',
   fields: () => ({
-    id: { type: GraphQLString },
+    id: { type: GraphQLID },
     trade_id: { type: GraphQLString },
     user_id: { type: GraphQLString },
     position: { type: GraphQLString },
@@ -58,7 +61,7 @@ export const Trade = new GraphQLObjectType({
     added: { type: GraphQLString },
 
     legs : {
-      type: OptionLeg,
+      type: new GraphQLList(OptionLeg),
       sqlJoin(tradesTable, legsTable) {
         return `${tradesTable}.id = ${legsTable}.opening_trade`;
       },

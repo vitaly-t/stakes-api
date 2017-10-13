@@ -14,6 +14,7 @@ import {
   GraphQLInt,
   GraphQLBoolean,
   GraphQLFloat,
+  GraphQLID,
 } from '../graphql';
 
 export interface IPosition {
@@ -64,7 +65,7 @@ export const rootQueryFields = {
   position: {
     type: Position,
     args: {
-      id: { type: GraphQLString },
+      id: { type: GraphQLID },
       symbol: { type: GraphQLString },
       tags : { type : new GraphQLList(GraphQLInt) },
       active: { type: GraphQLBoolean },
