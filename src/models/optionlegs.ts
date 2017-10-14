@@ -37,7 +37,7 @@ export const OptionLeg = new GraphQLObjectType({
   name: 'OptionLeg',
   sqlTable: 'optionlegs',
   uniqueKey: 'id',
-  fields: () => ({
+  fields: {
     id: { type: GraphQLID },
     user_id: { type: GraphQLString },
     symbol: { type: new GraphQLNonNull(GraphQLString) },
@@ -52,7 +52,7 @@ export const OptionLeg = new GraphQLObjectType({
     closing_trade: { type: GraphQLString },
     orig_delta: { type: GraphQLFloat },
     total_profit: { type: GraphQLFloat },
-  }),
+  },
 });
 
 const { accessors: preMadeAccessors } = models.makeAllData( OptionLeg, 'optionlegs');

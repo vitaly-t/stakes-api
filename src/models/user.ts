@@ -4,6 +4,7 @@ import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
 import { Request } from '../types';
 import * as models from './models';
+import joinMonster from 'join-monster';
 
 import {
   GraphQLObjectType,
@@ -23,27 +24,32 @@ export interface IUser {
 
 export const UserInfo = new GraphQLObjectType({
   name: 'UserInfo',
-  fields: () => ({}),
+  fields: {},
 });
 
 export const User = new GraphQLObjectType({
   name: 'User',
   sqlTable: 'users',
   uniqueKey: 'id',
-  fields: () => ({
+  fields: {
     id: { type: GraphQLID },
     email: { type: GraphQLString },
     name:  { type: GraphQLString },
     info: {
       type: UserInfo,
     },
-  }),
+  },
 });
 
 export const rootQueryFields = {
   user: {
     type: User,
     where: (table, args, context) => `${table}.id=${db.as.text(context.user.id)}`,
+    resolve: (parent, args, context, resolveInfo) => {
+      return joinMonster(resolveInfo, context, sql => {
+        return db.query(context.log, 'get user', sql);
+      });
+    },
   },
 };
 

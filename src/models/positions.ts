@@ -5,6 +5,7 @@ import { BaseLogger } from 'pino';
 import { Request } from '../types';
 import { Trade, ITrade } from './trades';
 import * as models from './models';
+import joinMonster from 'join-monster';
 
 import {
   GraphQLObjectType,
@@ -38,7 +39,7 @@ export const Position = new GraphQLObjectType({
   name: 'Position',
   sqlTable: 'positions',
   uniqueKey: 'id',
-  fields: () => ({
+  fields: {
     id: { type: GraphQLString },
     user_id: { type: GraphQLString },
     account: { type: new GraphQLNonNull(GraphQLString) },
@@ -46,7 +47,7 @@ export const Position = new GraphQLObjectType({
     name: { type: GraphQLString },
     note: { type: GraphQLString },
     tags: {  type: new GraphQLList(GraphQLInt) },
-    notional_risk: { type: GraphQLString },
+    notional_risk: { type: GraphQLFloat },
     profit_target_pct: { type: GraphQLFloat },
     stop_loss: { type: GraphQLFloat },
     active: { type: GraphQLBoolean },
@@ -58,7 +59,7 @@ export const Position = new GraphQLObjectType({
         return `${positionTable}.id = ${tradesTable}.position`;
       }
     },
-  }),
+  },
 });
 
 export const rootQueryFields = {
@@ -100,8 +101,13 @@ export const rootQueryFields = {
       }
 
       return wheres.join(' AND ');
-    }
-  }
+    },
+    resolve: (parent, args, context, resolveInfo) => {
+      return joinMonster(resolveInfo, context, sql => {
+        return db.query(context.log, 'get positions', sql, context.sqlArgs);
+      })
+    },
+  },
 };
 
 const { accessors: preMadeAccessors } = models.makeAllData(Position, 'positions');

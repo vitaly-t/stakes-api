@@ -41,7 +41,7 @@ export const Trade = new GraphQLObjectType({
   name: 'Trade',
   sqlTable: 'trades',
   uniqueKey: 'id',
-  fields: () => ({
+  fields: {
     id: { type: GraphQLID },
     trade_id: { type: GraphQLString },
     user_id: { type: GraphQLString },
@@ -66,7 +66,7 @@ export const Trade = new GraphQLObjectType({
         return `${tradesTable}.id = ${legsTable}.opening_trade`;
       },
     },
-  }),
+  },
 });
 
 const { accessors: preMadeAccessors } = models.makeAllData(Trade, 'trades');

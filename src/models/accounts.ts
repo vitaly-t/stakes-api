@@ -4,6 +4,7 @@ import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
 import { Request } from '../types';
 import * as models from './models';
+import joinMonster from 'join-monster';
 
 import {
   GraphQLObjectType,
@@ -32,7 +33,7 @@ export const Account = new GraphQLObjectType({
   name: 'Account',
   sqlTable: 'accounts',
   uniqueKey: 'id',
-  fields: () => ({
+  fields: {
     id: { type: GraphQLString },
     broker: { type: GraphQLInt },
     name: { type: GraphQLString },
@@ -43,13 +44,18 @@ export const Account = new GraphQLObjectType({
 
     should_autoupdate: { type: GraphQLBoolean },
     last_pull_time: { type: GraphQLString },
-  }),
+  },
 });
 
 export const rootQueryFields = {
   accounts: {
     type: Account,
     where: (table, args, context) => `${table}.user_id=${db.as.text(context.user.id)}`,
+    resolve: (parent, args, context, resolveInfo) => {
+      return joinMonster(resolveInfo, context, sql => {
+        return db.query(context.log, 'get accounts', sql);
+      });
+    },
   },
 };
 
