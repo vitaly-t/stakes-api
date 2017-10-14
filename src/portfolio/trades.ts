@@ -3,8 +3,8 @@ import * as db from '../services/db';
 import * as uuid from 'uuid';
 import { Request, Reply } from '../types';
 import * as brokers from '../services/brokers';
-import { IOptionLeg } from '../models/optionlegs';
-import { ITrade } from '../models/trades';
+import { IOptionLeg, accessors as legAccess } from '../models/optionlegs';
+import { ITrade, accessors as tradeAccess } from '../models/trades';
 
 export async function fetch(req : Request, retrieveAll : boolean) {
   let newTrades = await brokers.getTrades(req, req.query.retrieve_all);
@@ -16,7 +16,8 @@ export async function process(req : Request, input : brokers.Trade[]) {
 
   let seenSymbols = new Set();
   let trades : ITrade[] = [];
-  let legs : IOptionLeg[] = [];
+  let newLegs: IOptionLeg[] = [];
+  let updatedLegs : IOptionLeg[] = [];
 
   let importDate = new Date();
 
@@ -39,9 +40,41 @@ export async function process(req : Request, input : brokers.Trade[]) {
 
     seenSymbols.add(t.symbol);
 
+    // TODO Get existing open legs and see if these trades close any of those legs.
+
+    let thisExec : IOptionLeg[] = [];
     _.each(t.executions, (e) => {
       // Group executions by strike/expiration/right, and add to the legs list.
+      let isCall = e.side === 'CALL' || e.side === 'C';
+      let existing = _.find(thisExec, { strike: e.strike, call: isCall, expiration: e.expiration });
+      if(existing)  {
+        existing.size += e.size;
+        existing.commissions += e.commissions;
+        if(!_.isNil(e.realized_pnl) && !_.isNaN(e.realized_pnl)) {
+          existing.total_profit += e.realized_pnl;
+        }
+      } else {
+        thisExec.push({
+          id: undefined,
+          user_id: req.user.id,
+          symbol: t.symbol,
+          price: e.price,
+          size: e.size,
+          call: isCall,
+          expiration: e.expiration,
+          strike: e.strike,
+          commissions: e.commissions,
+          total_profit: e.realized_pnl,
+          opening_trade: id,
+        });
+      }
     });
+
+    return Promise.all([
+      legAccess.add(req, newLegs),
+      legAccess.update(req, updatedLegs),
+      tradeAccess.add(req, trades),
+    ]);
   });
 
   // Get the positions for all the symbols that we saw and then fill in the trades with the
