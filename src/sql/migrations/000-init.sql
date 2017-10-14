@@ -178,6 +178,7 @@ CREATE INDEX ON current_option_prices(symbol);
 CREATE TYPE fetch_status AS ENUM('scheduled', 'running', 'success', 'failure');
 
 CREATE TABLE fetches (
+    id uuid primary key default uuid_generate_v1(),
     user_id uuid not null,
     type varchar not null,
     status fetch_status,
