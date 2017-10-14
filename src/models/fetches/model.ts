@@ -15,11 +15,13 @@ import {
   GraphQLFloat,
 } from '../../graphql_types';
 
+export type FetchStatus = 'scheduled' | 'running' | 'success' | 'failure';
+
 export interface IFetch {
   id: string;
   user_id: string;
   type: string;
-  status: string;
+  status: FetchStatus;
   items_fetched: number;
   ts: Date;
 }

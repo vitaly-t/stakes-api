@@ -5,11 +5,23 @@ import { Request, Reply } from '../types';
 import * as brokers from '../services/brokers';
 import { IOptionLeg, accessors as legAccess } from '../models/optionlegs';
 import { ITrade, accessors as tradeAccess } from '../models/trades';
+import { IFetch, accessors as fetchAccess } from '../models/fetches';
 
 export async function fetch(req : Request, retrieveAll : boolean) {
-  let newTrades = await brokers.getTrades(req, req.query.retrieve_all);
+  let fetchLog = (await fetchAccess.add(req, { user_id: req.user.id, type: 'trades', status: 'running' }))[0];
 
-  return process(req, newTrades);
+  let numItems;
+  fetchLog.status = 'success';
+  try {
+    let newTrades = await brokers.getTrades(req, req.query.retrieve_all);
+    fetchLog.items_fetched = await process(req, newTrades);
+    await fetchAccess.update(req, fetchLog);
+  } catch(e) {
+    fetchLog.status = 'failure';
+    await fetchAccess.update(req, fetchLog);
+  }
+
+
 }
 
 export async function process(req : Request, input : brokers.Trade[]) {
@@ -69,12 +81,6 @@ export async function process(req : Request, input : brokers.Trade[]) {
         });
       }
     });
-
-    return Promise.all([
-      legAccess.add(req, newLegs),
-      legAccess.update(req, updatedLegs),
-      tradeAccess.add(req, trades),
-    ]);
   });
 
   // Get the positions for all the symbols that we saw and then fill in the trades with the
@@ -95,6 +101,11 @@ export async function process(req : Request, input : brokers.Trade[]) {
     t.position = positions[t.symbol];
   });
 
+  await Promise.all([
+    legAccess.add(req, newLegs),
+    legAccess.update(req, updatedLegs),
+    tradeAccess.add(req, trades),
+  ]);
 
-
+  return trades.length;
 }

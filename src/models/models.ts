@@ -48,31 +48,32 @@ export function makeAccessors<T>(t: GraphQLObjectType, tableName: string, readon
   const getAllQueryName = `get all ${tableName}`;
 
   return {
-    add: function(req: Request, data: PartialT | PartialT[], ignoreConflicts=false) {
+    add: function(req: Request, data: PartialT | PartialT[], ignoreConflicts=false) : Promise<T[]> {
       let q = db.helpers.insert(data, columnSet);
       if(ignoreConflicts) {
-        q += '\nON CONFLICT DO NOTHING\n'
+        q += '\nON CONFLICT DO NOTHING'
       }
-      q += ' RETURNING *';
+      q += '\nRETURNING *';
       return db.query(req.log, addQueryName, q);
     },
 
-    update: function(req: Request, data: PartialT | PartialT[]) {
+    update: function(req: Request, data: PartialT | PartialT[]) : Promise<T[]> {
       let q = db.helpers.update(data, null, tableName);
       q += ` WHERE user_id=$[user_id]
       RETURNING *`;
       return db.query(req.log, updateQueryName, q, { user_id: req.user.id });
     },
 
-    remove: function(req: Request, id: string) {
+    remove: function(req: Request, id: string) : Promise<string[]> {
       return db.query(req.log, deleteQueryName, deleteQuery, { id, user_id: req.user.id });
     },
 
-    getById: function(req: Request, id: string) {
-      return db.query(req.log, getByIdQueryName, getByIdQuery, { id, user_id: req.user.id });
+    getById: function(req: Request, id: string) : Promise<T | null>{
+      return db.query(req.log, getByIdQueryName, getByIdQuery, { id, user_id: req.user.id })
+        .then(x => (x && x[0]) || null);
     },
 
-    getAll: function(req: Request) {
+    getAll: function(req: Request) : Promise<T[]> {
       return db.query(req.log, getAllQueryName, getAllQuery, { user_id: req.user.id });
     },
   };
