@@ -26,10 +26,10 @@ export interface IOptionLeg {
   expiration: string;
   strike: number;
   commissions: number;
-  expired: number;
+  expired?: boolean;
   opening_trade: string;
-  closing_trade: string;
-  orig_delta: number;
+  closing_trade?: string;
+  orig_delta?: number;
   total_profit: number;
 }
 
@@ -55,7 +55,7 @@ export const OptionLeg = new GraphQLObjectType({
   },
 });
 
-const { accessors: preMadeAccessors } = models.makeAllData( OptionLeg, 'optionlegs');
+const { accessors: preMadeAccessors } = models.makeAllData<IOptionLeg>(OptionLeg, 'optionlegs');
 
 export const accessors = {
   ...preMadeAccessors,

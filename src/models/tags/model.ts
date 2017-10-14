@@ -45,7 +45,7 @@ export const rootQueryFields = {
   },
 };
 
-const preMadeAccessors = models.makeAccessors(Tag, 'tags', ['id']);
+const preMadeAccessors = models.makeAccessors<ITag>(Tag, 'tags', ['id']);
 
 export const accessors = {
   ...preMadeAccessors,

@@ -24,7 +24,7 @@ export function createColumnSet(fields: GraphQLFieldMap<any, any>, tableName: st
   return new db.helpers.ColumnSet(columnDef, { table: tableName });
 }
 
-type Partial<T> = {
+export type Partial<T> = {
   [K in keyof T]?: T[K];
 };
 
@@ -48,16 +48,20 @@ export function makeAccessors<T>(t: GraphQLObjectType, tableName: string, readon
   const getAllQueryName = `get all ${tableName}`;
 
   return {
-    add: function(req: Request, data: PartialT | PartialT[]) {
-      let q = db.helpers.insert(data, columnSet) + ' RETURNING *';
+    add: function(req: Request, data: PartialT | PartialT[], ignoreConflicts=false) {
+      let q = db.helpers.insert(data, columnSet);
+      if(ignoreConflicts) {
+        q += '\nON CONFLICT DO NOTHING\n'
+      }
+      q += ' RETURNING *';
       return db.query(req.log, addQueryName, q);
     },
 
-    update: function(req: Request, id: string, data: PartialT) {
+    update: function(req: Request, data: PartialT | PartialT[]) {
       let q = db.helpers.update(data, null, tableName);
-      q += ` WHERE id=$[id] AND user_id=$[user_id]
+      q += ` WHERE user_id=$[user_id]
       RETURNING *`;
-      return db.query(req.log, updateQueryName, q, { id, user_id: req.user.id });
+      return db.query(req.log, updateQueryName, q, { user_id: req.user.id });
     },
 
     remove: function(req: Request, id: string) {
@@ -77,6 +81,6 @@ export function makeAccessors<T>(t: GraphQLObjectType, tableName: string, readon
 
 export function makeAllData<T>(clazz : GraphQLObjectType, tableName: string, readonlyFields? : string[]) {
   return {
-    accessors: makeAccessors(clazz, tableName, readonlyFields),
+    accessors: makeAccessors<T>(clazz, tableName, readonlyFields),
   };
 }

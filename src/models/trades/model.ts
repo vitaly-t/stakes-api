@@ -65,7 +65,7 @@ export const Trade = new GraphQLObjectType({
   },
 });
 
-const { accessors: preMadeAccessors } = models.makeAllData(Trade, 'trades');
+const { accessors: preMadeAccessors } = models.makeAllData<ITrade>(Trade, 'trades');
 
 export const accessors = {
   ...preMadeAccessors,

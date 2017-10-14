@@ -110,7 +110,7 @@ export const rootQueryFields = {
   },
 };
 
-const { accessors: preMadeAccessors } = models.makeAllData(Position, 'positions');
+const { accessors: preMadeAccessors } = models.makeAllData<IPosition>(Position, 'positions');
 
 export const accessors = {
   ...preMadeAccessors,

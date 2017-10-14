@@ -59,7 +59,7 @@ export const rootQueryFields = {
   },
 };
 
-const preMadeAccessors = models.makeAccessors(Account, 'accounts', ['id']);
+const preMadeAccessors = models.makeAccessors<IAccount>(Account, 'accounts', ['id']);
 
 export const accessors = {
   ...preMadeAccessors,

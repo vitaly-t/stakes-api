@@ -45,7 +45,7 @@ export const rootQueryFields = {
   },
 };
 
-const preMadeAccessors = models.makeAccessors(Broker, 'brokers', ['id']);
+const preMadeAccessors = models.makeAccessors<IBroker>(Broker, 'brokers', ['id']);
 
 export const accessors = {
   ...preMadeAccessors,

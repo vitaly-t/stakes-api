@@ -53,7 +53,7 @@ export const rootQueryFields = {
   },
 };
 
-const preMadeAccessors = models.makeAccessors(User, 'users', ['id', 'pw_hash']);
+const preMadeAccessors = models.makeAccessors<IUser>(User, 'users', ['id', 'pw_hash']);
 
 export const accessors = {
   ...preMadeAccessors,
