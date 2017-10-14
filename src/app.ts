@@ -13,14 +13,14 @@ const fastify = fastifyMod({
 
 fastify.register(fastifyApollo, {
   graphql: (req : Request, rep: Reply) => {
-    req.user = { id: 'e1bc5ec0-b08f-11e7-b258-0bc36fa3d63a' }; // hardcoded for now.
     return {
       schema,
       context: {
+        user: { id: 'e1bc5ec0-b08f-11e7-b258-0bc36fa3d63a' }, // hardcoded for now.
         req,
         rep,
       },
-    };
+    }
   },
   graphiql: true,
 } as any);
