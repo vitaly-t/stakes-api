@@ -10,6 +10,9 @@ CREATE TABLE users (
 
 CREATE UNIQUE INDEX ON users(email);
 
+INSERT INTO users (id, email, name)
+VALUES ('e1bc5ec0-b08f-11e7-b258-0bc36fa3d63a', 'fakeemail@example.com', 'Daniel');
+
 CREATE TABLE brokers (
     id serial primary key,
     short_name varchar,
