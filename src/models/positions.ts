@@ -30,7 +30,7 @@ export interface IPosition {
   profit_target_pct: number;
   stop_loss: number;
   active: boolean;
-  added: string;
+  added: Date;
 
   trades? : ITrade[];
 }
@@ -40,8 +40,8 @@ export const Position = new GraphQLObjectType({
   sqlTable: 'positions',
   uniqueKey: 'id',
   fields: {
-    id: { type: GraphQLString },
-    user_id: { type: GraphQLString },
+    id: { type: new GraphQLNonNull(GraphQLString) },
+    user_id: { type: new GraphQLNonNull(GraphQLString) },
     account: { type: new GraphQLNonNull(GraphQLString) },
     symbol: { type: new GraphQLNonNull(GraphQLString) },
     name: { type: GraphQLString },
@@ -51,7 +51,7 @@ export const Position = new GraphQLObjectType({
     profit_target_pct: { type: GraphQLFloat },
     stop_loss: { type: GraphQLFloat },
     active: { type: GraphQLBoolean },
-    added: { type: GraphQLString },
+    added: { type: new GraphQLNonNull(GraphQLString) },
 
     trades: {
       type: new GraphQLList(Trade),
