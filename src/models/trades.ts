@@ -53,7 +53,6 @@ export const Trade = new GraphQLObjectType({
     note: { type: GraphQLString },
     symbol: { type: new GraphQLNonNull(GraphQLString) },
     multiplier: { type: GraphQLInt },
-    combined_into: { type: GraphQLString },
     traded: { type: GraphQLString },
     added: { type: GraphQLString },
 
@@ -70,40 +69,4 @@ const { accessors: preMadeAccessors } = models.makeAllData(Trade, 'trades');
 
 export const accessors = {
   ...preMadeAccessors,
-  combine(req : Request, trades : string[]) {
-    if(trades.length === 1) {
-      return null;
-    }
-
-    let args = {
-      mainTrade: trades[0],
-      subsumed: trades.slice(1),
-    };
-
-    let queries = [`UPDATE trades
-      SET combined_into=$[mainTrade]
-      WHERE id=ANY($[subsumed]);`,
-
-      `UPDATE optionlegs SET opening_trade=$[mainTrade]
-        WHERE opening_trade = ANY($[subsumed]);`,
-
-      `UPDATE optionlegs SET closing_trade=$[mainTrade]
-        WHERE closing_trade = ANY($[subsumed]);`,
-
-      `WITH trade_risks AS (
-        SELECT SUM(notional_risk) risk
-        FROM trades
-        WHERE id=$[mainTrade] OR id=ANY($[subsumed])
-      )
-      UPDATE trades
-        SET notional_risk=risk
-        FROM trade_risks
-        WHERE id=$[mainTrade];`,
-    ];
-
-    req.log.debug(args, "Combining queries");
-    return db.pg.tx(t => t.batch(_.map(queries, (q, i) => {
-      return db.query(req.log, `combine trades:${i}`, q, args, t);
-    })));
-  },
 };

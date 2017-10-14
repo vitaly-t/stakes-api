@@ -35,9 +35,6 @@ CREATE TABLE accounts (
 CREATE UNIQUE INDEX ON accounts(user_id, id);
 CREATE INDEX ON accounts(user_id);
 
--- A position will generally be all the trades that fit under a particular symbol.
--- It is possible to split trades on a single position into multiple positions,
--- but positions on different symbols can not be combined into one for now.
 CREATE TABLE positions (
     id uuid primary key default uuid_generate_v1(),
     user_id uuid references users,
@@ -76,9 +73,7 @@ CREATE TABLE trades (
     symbol varchar,
     multiplier int default 100,
 
-    combined_into uuid,
     traded timestamptz default now(),
-
     added timestamptz default now()
 );
 
