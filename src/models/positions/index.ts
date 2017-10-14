@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
-import * as db from '../services/db';
+import * as db from '../../services/db';
 import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
-import { Request } from '../types';
-import { Trade, ITrade } from './trades';
-import * as models from './models';
+import { Request } from '../../types';
+import { Trade, ITrade } from '../trades';
+import * as models from '../models';
 import joinMonster from 'join-monster';
 
 import {
@@ -16,7 +16,7 @@ import {
   GraphQLBoolean,
   GraphQLFloat,
   GraphQLID,
-} from '../graphql';
+} from '../../graphql_types';
 
 export interface IPosition {
   id: string;

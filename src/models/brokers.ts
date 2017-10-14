@@ -13,7 +13,7 @@ import {
   GraphQLInt,
   GraphQLBoolean,
   GraphQLFloat,
-} from '../graphql';
+} from '../graphql_types';
 
 export interface IBroker {
   id : string;

@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
-import * as db from '../services/db';
+import * as db from '../../services/db';
 import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
-import { Request } from '../types';
-import { OptionLeg, IOptionLeg } from './optionlegs';
-import * as models from './models';
+import { Request } from '../../types';
+import { OptionLeg, IOptionLeg } from '../optionlegs';
+import * as models from '../models';
 
 import {
   GraphQLObjectType,
@@ -15,7 +15,7 @@ import {
   GraphQLBoolean,
   GraphQLFloat,
   GraphQLID,
-} from '../graphql';
+} from '../../graphql_types';
 
 export interface ITrade {
   id: string;

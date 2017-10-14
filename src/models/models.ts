@@ -1,7 +1,7 @@
 import * as db from '../services/db';
 import * as _ from 'lodash';
 import { Request } from '../types';
-import { GraphQLObjectType, GraphQLFieldMap, GraphQLList } from '../graphql';
+import { GraphQLObjectType, GraphQLFieldMap, GraphQLList } from '../graphql_types';
 
 export type I<T> = {
   [K in keyof T]: T[K];

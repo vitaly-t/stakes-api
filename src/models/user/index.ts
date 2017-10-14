@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
-import * as db from '../services/db';
+import * as db from '../../services/db';
 import * as debugMod from 'debug';
 import { BaseLogger } from 'pino';
-import { Request } from '../types';
-import * as models from './models';
+import { Request } from '../../types';
+import * as models from '../models';
 import joinMonster from 'join-monster';
 
 import {
@@ -12,7 +12,7 @@ import {
   GraphQLID,
   GraphQLList,
   GraphQLNonNull,
-} from '../graphql';
+} from '../../graphql_types';
 
 export interface IUser {
   id : string;
